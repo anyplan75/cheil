@@ -1,8 +1,14 @@
 # cheil
 
-이 저장소는 작업 위치가 아닙니다.
+이 저장소는 작업 위치가 아닙니다. 코드는 **`clip_edit/`** 에 있습니다.
 
-촬영 영상 NAS 아카이브 도구는 **`clip_edit/`** 로 옮겼습니다.
+목적 저장소: https://github.com/anyplan75/clip_edit
 
-최종 목적 저장소: `github.com/anyplan75/clip_edit`  
-→ GitHub에 `clip_edit` 저장소를 만든 뒤 에이전트에게 알려 주시면 그쪽으로 푸시합니다.
+Cloud Agent는 `cheil`에만 푸시 권한이 있어 `clip_edit`으로 직접 푸시할 수 없습니다.
+본인 PC에서 아래를 실행해 옮겨 주세요.
+
+```bash
+bash clip_edit/migrate-to-clip_edit.sh
+```
+
+또는 `clip_edit` 저장소로 **새 Cloud Agent**를 시작한 뒤, 이 폴더 내용을 가져오게 하세요.
