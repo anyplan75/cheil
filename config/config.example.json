@@ -1,0 +1,35 @@
+{
+  "sourceFolder": "D:\\DCIM\\Video",
+  "nasFolder": "\\\\NAS\\Video\\Archive",
+  "workFolder": "D:\\VideoWork\\Temp",
+  "processedFolder": "D:\\VideoWork\\Done",
+  "extensions": [".mp4", ".mov", ".mts", ".m2ts", ".avi", ".mkv"],
+  "deleteSourceAfterSuccess": false,
+  "keepLocalCopy": true,
+  "encoding": {
+    "codec": "auto",
+    "crf": 18,
+    "preset": "slow",
+    "audioBitrate": "320k",
+    "pixelFormat": "yuv420p",
+    "nvencCq": 19,
+    "nvencPreset": "p7",
+    "container": "mp4"
+  },
+  "naming": {
+    "unknownCamera": "UNKNOWNCAM",
+    "unknownLens": "UNKNOWNLENS",
+    "cameraAliases": {
+      "ILCE-7M4": "A7IV",
+      "ILCE-7RM5": "A7RV",
+      "ILCE-7CM2": "A7CII",
+      "Canon EOS R5": "EOSR5",
+      "Canon EOS R6 Mark II": "EOSR6II"
+    },
+    "lensAliases": {
+      "FE 24-70mm F2.8 GM II": "FE2470GM2",
+      "FE 35mm F1.4 GM": "FE35GM",
+      "RF24-70mm F2.8 L IS USM": "RF2470L"
+    }
+  }
+}
