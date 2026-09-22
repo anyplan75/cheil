@@ -63,12 +63,13 @@ python3 -m http.server 8080
 
 배포 URL: https://anyplan75.github.io/cheil/
 
-**최초 1회 (저장소 소유자):** Settings → Pages에서 아래 중 하나를 선택합니다.
+jifc와 같이 **`pages` 브랜치**에서 정적 파일을 제공합니다.
 
-1. **권장 (jifc와 동일):** Deploy from a branch → Branch `pages` → `/ (root)` → Save  
-2. 또는 Source: **GitHub Actions** → Actions에서 `Deploy GitHub Pages` 재실행
+**최초 1회 (저장소 소유자):**  
+https://github.com/anyplan75/cheil/settings/pages  
+→ Deploy from a branch → Branch **`pages`** → `/ (root)` → Save
 
-이후 `main` 푸시 시 Actions가 재배포합니다. (`pages` 브랜치에도 동일 파일이 있습니다.)
+이후 `pages` 브랜치에 푸시하면 사이트가 갱신됩니다.
 
 ## 지원 언어
 
