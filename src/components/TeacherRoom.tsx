@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSpeechCaptions } from "@/hooks/useSpeechCaptions";
 import { CaptionText } from "@/components/CaptionText";
 
@@ -19,12 +19,18 @@ export function TeacherRoom({ code }: { code: string }) {
   const [enabled, setEnabled] = useState(false);
   const [liveText, setLiveText] = useState("");
   const [finals, setFinals] = useState<string[]>([]);
-  const [copied, setCopied] = useState<"student" | "teacher" | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState("");
 
-  const studentUrl =
-    typeof window === "undefined"
-      ? ""
-      : `${window.location.origin}/room/${code}/student`;
+  const studentPath = `/room/${code}/student`;
+  const studentUrl = origin ? `${origin}${studentPath}` : studentPath;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setOrigin(window.location.origin);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     void postCaption(code, { type: "teacher", connected: true });
@@ -56,16 +62,12 @@ export function TeacherRoom({ code }: { code: string }) {
     onFinal,
   });
 
-  const teacherUrl = useMemo(
-    () => (typeof window === "undefined" ? "" : window.location.href),
-    [],
-  );
-
-  async function copy(kind: "student" | "teacher", value: string) {
+  async function copyStudentLink() {
     try {
+      const value = `${window.location.origin}${studentPath}`;
       await navigator.clipboard.writeText(value);
-      setCopied(kind);
-      setTimeout(() => setCopied(null), 1600);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
     } catch {
       /* ignore */
     }
@@ -93,14 +95,14 @@ export function TeacherRoom({ code }: { code: string }) {
       <section className="link-row">
         <div>
           <p className="link-label">학생용 링크</p>
-          <code>{studentUrl || "…"}</code>
+          <code>{studentUrl}</code>
         </div>
         <button
           type="button"
           className="secondary-btn"
-          onClick={() => copy("student", studentUrl)}
+          onClick={copyStudentLink}
         >
-          {copied === "student" ? "Copied!" : "Copy student link"}
+          {copied ? "Copied!" : "Copy student link"}
         </button>
       </section>
 
@@ -141,10 +143,6 @@ export function TeacherRoom({ code }: { code: string }) {
           ) : null}
         </div>
       </section>
-
-      <p className="fine-print">
-        Teacher page: {teacherUrl || `/room/${code}/teacher`}
-      </p>
     </div>
   );
 }

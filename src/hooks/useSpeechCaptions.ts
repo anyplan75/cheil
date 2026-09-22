@@ -42,16 +42,23 @@ export function useSpeechCaptions(opts: {
 }) {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [supported, setSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const shouldListenRef = useRef(false);
   const onLiveRef = useRef(opts.onLive);
   const onFinalRef = useRef(opts.onFinal);
-  const supported = typeof window !== "undefined" && Boolean(getSpeechCtor());
 
   useEffect(() => {
     onLiveRef.current = opts.onLive;
     onFinalRef.current = opts.onFinal;
   }, [opts.onLive, opts.onFinal]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSupported(Boolean(getSpeechCtor()));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const attachRecognition = useCallback(() => {
     const Ctor = getSpeechCtor();
