@@ -74,12 +74,20 @@ async function fromDatamuse(word: string): Promise<DictionaryPayload | null> {
   const entry = data[0];
   if (!entry?.defs?.length) return null;
 
+  const posLabels: Record<string, string> = {
+    n: "noun",
+    v: "verb",
+    adj: "adjective",
+    adv: "adverb",
+    u: "other",
+  };
+
   const byPos = new Map<string, { definition: string }[]>();
   for (const def of entry.defs.slice(0, 8)) {
     const [pos, ...rest] = def.split("\t");
     const definition = rest.join("\t").trim();
     if (!definition) continue;
-    const partOfSpeech = pos || "definition";
+    const partOfSpeech = posLabels[pos] || pos || "definition";
     const list = byPos.get(partOfSpeech) ?? [];
     list.push({ definition });
     byPos.set(partOfSpeech, list);
