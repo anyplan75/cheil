@@ -1,7 +1,7 @@
 name: Deploy GitHub Pages
 on:
   push:
-    branches: [main, pages]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,9 +23,10 @@ jobs:
           mkdir -p _site
           cp index.html broadcast.html listen.html admin.html monitor.html overlay.html README.md _site/
           cp -r css js _site/
+      # Do not use enablement:true — first-time Pages create needs repo admin.
+      # Enable once in Settings → Pages (GitHub Actions or branch `pages` / root),
+      # then this workflow can deploy.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

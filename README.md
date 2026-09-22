@@ -61,9 +61,14 @@ python3 -m http.server 8080
 
 ## GitHub Pages
 
-`main` 푸시 시 `.github/workflows/pages.yml`이 자동 배포합니다.
-
 배포 URL: https://anyplan75.github.io/cheil/
+
+**최초 1회 (저장소 소유자):** Settings → Pages에서 아래 중 하나를 선택합니다.
+
+1. **권장 (jifc와 동일):** Deploy from a branch → Branch `pages` → `/ (root)` → Save  
+2. 또는 Source: **GitHub Actions** → Actions에서 `Deploy GitHub Pages` 재실행
+
+이후 `main` 푸시 시 Actions가 재배포합니다. (`pages` 브랜치에도 동일 파일이 있습니다.)
 
 ## 지원 언어
 
