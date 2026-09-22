@@ -178,14 +178,43 @@ JIFC.viewer = (() => {
       .replace(/"/g, "&quot;");
   }
 
-  function fillLangSelect(selectEl, selected) {
-    selectEl.innerHTML = JIFC.config.languages
+  function fillLangSelect(selectEl, selected, allowedCodes) {
+    const fallback = ["ko", ...JIFC.defaultSelectedTargets()].map((c) => JIFC.langByCode[c]).filter(Boolean);
+    let langs = JIFC.config.languages;
+    if (Array.isArray(allowedCodes)) {
+      const allow = new Set(allowedCodes);
+      langs = JIFC.config.languages.filter((l) => allow.has(l.code));
+    }
+    if (!langs.length) langs = fallback.length ? fallback : JIFC.config.languages.slice(0, 1);
+
+    const preferred = langs.some((l) => l.code === selected) ? selected : langs[0].code;
+    selectEl.innerHTML = langs
       .map((l) => {
-        const sel = l.code === selected ? " selected" : "";
+        const sel = l.code === preferred ? " selected" : "";
         return `<option value="${l.code}"${sel}>${l.flag} ${l.name} (${l.nameEn})</option>`;
       })
       .join("");
+    return preferred;
   }
 
-  return { queryLang, startOverlay, startPrompter, fillLangSelect, escapeHtml, hexToRgba };
+  /**
+   * 송출기가 기록한 activeTargets 우선.
+   * 없으면 show===true 만. 둘 다 없으면 추천 언어.
+   */
+  function activeLangCodesFromSettings(settings) {
+    const fallback = ["ko", ...JIFC.defaultSelectedTargets()];
+    if (!settings) return fallback;
+
+    if (Array.isArray(settings.activeTargets) && settings.activeTargets.length) {
+      const codes = settings.activeTargets.filter((c) => JIFC.langByCode[c]);
+      return codes.length ? codes : fallback;
+    }
+
+    const active = JIFC.config.languages
+      .filter((l) => settings[l.code] && settings[l.code].show === true)
+      .map((l) => l.code);
+    return active.length ? active : fallback;
+  }
+
+  return { queryLang, startOverlay, startPrompter, fillLangSelect, activeLangCodesFromSettings, escapeHtml, hexToRgba };
 })();
