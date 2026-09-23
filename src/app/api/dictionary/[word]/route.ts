@@ -68,6 +68,13 @@ async function translateEnToKo(text: string): Promise<string> {
   }
 }
 
+function cleanDefinition(text: string) {
+  return text
+    .replace(/^\([^)]*\)\s*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function shortenGloss(text: string) {
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return "";
@@ -126,7 +133,7 @@ async function fromDictionaryApi(word: string): Promise<DictionaryPayload | null
   }));
 
   const textsToTranslate = rawMeanings.flatMap((m) =>
-    m.defs.map((d) => d.definition),
+    m.defs.map((d) => cleanDefinition(d.definition)),
   );
 
   const translations = await Promise.all(
@@ -139,10 +146,11 @@ async function fromDictionaryApi(word: string): Promise<DictionaryPayload | null
     partOfSpeechKo: m.partOfSpeechKo,
     synonyms: m.synonyms,
     definitions: m.defs.map((d) => {
+      const definition = cleanDefinition(d.definition);
       const definitionKo = translations[ti] || "";
       ti += 1;
       return {
-        definition: d.definition,
+        definition,
         definitionKo,
         example: d.example,
       };
@@ -194,7 +202,7 @@ async function fromDatamuse(word: string): Promise<DictionaryPayload | null> {
   const meanings: DictionaryMeaning[] = [];
 
   for (const [pos, defs] of entries) {
-    const sliced = defs.slice(0, 2);
+    const sliced = defs.slice(0, 2).map(cleanDefinition);
     const kos = await Promise.all(sliced.map((d) => translateEnToKo(d)));
     meanings.push({
       partOfSpeech: pos,
