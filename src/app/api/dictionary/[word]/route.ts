@@ -68,6 +68,26 @@ async function translateEnToKo(text: string): Promise<string> {
   }
 }
 
+function shortenGloss(text: string) {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned) return "";
+  // Keep the first clause as a short header gloss.
+  const cut = cleaned.split(/[.;]/)[0]?.trim() || cleaned;
+  return cut.length > 40 ? `${cut.slice(0, 40)}…` : cut;
+}
+
+async function translateWordGloss(word: string): Promise<string> {
+  const tagged = await translateEnToKo(`${word} (English)`);
+  if (tagged) {
+    const cleaned = tagged
+      .replace(/\(영어\)/g, "")
+      .replace(/영어/g, "")
+      .trim();
+    if (cleaned && cleaned.length <= 24) return cleaned;
+  }
+  return "";
+}
+
 async function fromDictionaryApi(word: string): Promise<DictionaryPayload | null> {
   const res = await fetch(
     `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
@@ -105,16 +125,14 @@ async function fromDictionaryApi(word: string): Promise<DictionaryPayload | null
     synonyms: (m.synonyms ?? []).slice(0, 5),
   }));
 
-  const textsToTranslate = [
-    word,
-    ...rawMeanings.flatMap((m) => m.defs.map((d) => d.definition)),
-  ];
+  const textsToTranslate = rawMeanings.flatMap((m) =>
+    m.defs.map((d) => d.definition),
+  );
 
   const translations = await Promise.all(
     textsToTranslate.map((t) => translateEnToKo(t)),
   );
-  const glossKo = translations[0] || "";
-  let ti = 1;
+  let ti = 0;
 
   const meanings: DictionaryMeaning[] = rawMeanings.map((m) => ({
     partOfSpeech: m.partOfSpeech,
@@ -130,6 +148,12 @@ async function fromDictionaryApi(word: string): Promise<DictionaryPayload | null
       };
     }),
   }));
+
+  const glossKo = shortenGloss(
+    meanings
+      .flatMap((m) => m.definitions)
+      .find((d) => d.definitionKo)?.definitionKo || "",
+  );
 
   return {
     word: entry.word ?? word,
@@ -167,7 +191,6 @@ async function fromDatamuse(word: string): Promise<DictionaryPayload | null> {
   }
 
   const entries = [...byPos.entries()].slice(0, 3);
-  const glossKo = await translateEnToKo(word);
   const meanings: DictionaryMeaning[] = [];
 
   for (const [pos, defs] of entries) {
@@ -184,6 +207,12 @@ async function fromDatamuse(word: string): Promise<DictionaryPayload | null> {
   }
 
   if (meanings.length === 0) return null;
+
+  const glossKo = shortenGloss(
+    meanings
+      .flatMap((m) => m.definitions)
+      .find((d) => d.definitionKo)?.definitionKo || "",
+  );
 
   return {
     word: entry.word ?? word,
@@ -210,7 +239,7 @@ export async function GET(_request: Request, { params }: Params) {
     const fallback = await fromDatamuse(cleaned).catch(() => null);
     if (fallback) return NextResponse.json(fallback);
 
-    const glossKo = await translateEnToKo(cleaned);
+    const glossKo = await translateWordGloss(cleaned);
     if (glossKo) {
       return NextResponse.json({
         word: cleaned,
