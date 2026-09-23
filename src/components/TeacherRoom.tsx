@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSpeechCaptions } from "@/hooks/useSpeechCaptions";
-import { CaptionText } from "@/components/CaptionText";
+import { useRoomStream } from "@/hooks/useRoomStream";
+import { CaptionBoard } from "@/components/CaptionBoard";
 
 async function postCaption(
   code: string,
@@ -17,10 +18,9 @@ async function postCaption(
 
 export function TeacherRoom({ code }: { code: string }) {
   const [enabled, setEnabled] = useState(false);
-  const [liveText, setLiveText] = useState("");
-  const [finals, setFinals] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState("");
+  const { room } = useRoomStream(code);
 
   const studentPath = `/room/${code}/student`;
   const studentUrl = origin ? `${origin}${studentPath}` : studentPath;
@@ -41,7 +41,6 @@ export function TeacherRoom({ code }: { code: string }) {
 
   const onLive = useCallback(
     (text: string) => {
-      setLiveText(text);
       void postCaption(code, { type: "live", text });
     },
     [code],
@@ -49,8 +48,6 @@ export function TeacherRoom({ code }: { code: string }) {
 
   const onFinal = useCallback(
     (text: string) => {
-      setFinals((prev) => [...prev.slice(-40), text]);
-      setLiveText("");
       void postCaption(code, { type: "final", text });
     },
     [code],
@@ -74,10 +71,13 @@ export function TeacherRoom({ code }: { code: string }) {
   }
 
   async function clearAll() {
-    setFinals([]);
-    setLiveText("");
+    const ok = window.confirm("지금까지 쌓인 자막을 모두 지울까요?");
+    if (!ok) return;
     await postCaption(code, { type: "clear" });
   }
+
+  const captions = room?.captions ?? [];
+  const liveText = room?.liveText ?? "";
 
   return (
     <div className="room-shell">
@@ -131,17 +131,16 @@ export function TeacherRoom({ code }: { code: string }) {
       <section className="caption-board">
         <div className="section-copy">
           <h2>Live captions</h2>
-          <p>선생님이 영어로 말하면 자막이 학생 화면에 바로 전달됩니다.</p>
+          <p>
+            말한 내용은 계속 쌓입니다. 학생 화면에도 같은 기록이 남습니다.
+            {captions.length > 0 ? ` (지금까지 ${captions.length}줄)` : ""}
+          </p>
         </div>
-        <div className="caption-scroll">
-          {finals.map((line, index) => (
-            <CaptionText key={`${line}-${index}`} text={line} />
-          ))}
-          {liveText ? <CaptionText text={liveText} live /> : null}
-          {!finals.length && !liveText ? (
-            <p className="muted">마이크를 켠 뒤 영어로 말해 보세요.</p>
-          ) : null}
-        </div>
+        <CaptionBoard
+          captions={captions}
+          liveText={liveText}
+          emptyMessage="마이크를 켠 뒤 영어로 말해 보세요."
+        />
       </section>
     </div>
   );

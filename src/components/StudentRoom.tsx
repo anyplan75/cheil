@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRoomStream } from "@/hooks/useRoomStream";
-import { CaptionText } from "@/components/CaptionText";
+import { CaptionBoard } from "@/components/CaptionBoard";
 import { DictionaryPanel } from "@/components/DictionaryPanel";
 import { SpeakHelper } from "@/components/SpeakHelper";
 
 export function StudentRoom({ code }: { code: string }) {
   const { room, status, error } = useRoomStream(code);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const captions = room?.captions ?? [];
 
   return (
     <div className="room-shell student-shell">
@@ -31,27 +32,18 @@ export function StudentRoom({ code }: { code: string }) {
       <section className="caption-board">
         <div className="section-copy">
           <h2>Teacher said</h2>
-          <p>모르는 영어 단어를 누르면 영한 뜻과 발음을 확인할 수 있습니다.</p>
+          <p>
+            선생님 말씀은 계속 쌓여 있어요. 모르는 단어를 누르면 영한 뜻과 발음을
+            볼 수 있습니다.
+            {captions.length > 0 ? ` (지금까지 ${captions.length}줄)` : ""}
+          </p>
         </div>
-        <div className="caption-scroll">
-          {(room?.captions ?? []).map((line) => (
-            <CaptionText
-              key={line.id}
-              text={line.text}
-              onWordClick={setSelectedWord}
-            />
-          ))}
-          {room?.liveText ? (
-            <CaptionText
-              text={room.liveText}
-              live
-              onWordClick={setSelectedWord}
-            />
-          ) : null}
-          {!room?.captions?.length && !room?.liveText ? (
-            <p className="muted">선생님이 말하기를 시작하면 자막이 여기에 보여요.</p>
-          ) : null}
-        </div>
+        <CaptionBoard
+          captions={captions}
+          liveText={room?.liveText}
+          onWordClick={setSelectedWord}
+          emptyMessage="선생님이 말하기를 시작하면 자막이 여기에 쌓여요."
+        />
       </section>
 
       <SpeakHelper />

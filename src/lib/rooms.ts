@@ -15,6 +15,7 @@ export type Room = {
 };
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const MAX_CAPTIONS = 500;
 const KV_NS =
   process.env.AWANA_KV_NAMESPACE || "p-cheil-awana-7f5b0c3e";
 const KV_BASE = `https://technocore.chat/kv/${KV_NS}`;
@@ -23,6 +24,7 @@ declare global {
   var __awanaRooms: Map<string, Room> | undefined;
   var __awanaListeners: Map<string, Set<(room: Room) => void>> | undefined;
   var __awanaLiveTimers: Map<string, ReturnType<typeof setTimeout>> | undefined;
+  var __awanaSaveQueues: Map<string, Promise<void>> | undefined;
 }
 
 function memoryStore() {
@@ -42,6 +44,13 @@ function liveTimers() {
     globalThis.__awanaLiveTimers = new Map();
   }
   return globalThis.__awanaLiveTimers;
+}
+
+function saveQueues() {
+  if (!globalThis.__awanaSaveQueues) {
+    globalThis.__awanaSaveQueues = new Map();
+  }
+  return globalThis.__awanaSaveQueues;
 }
 
 export function createRoomCode(): string {
@@ -68,6 +77,37 @@ function parseKvBody(raw: string): Room | null {
   } catch {
     return null;
   }
+}
+
+function cloneRoom(room: Room): Room {
+  return {
+    ...room,
+    captions: [...room.captions],
+  };
+}
+
+function mergeCaptions(a: CaptionEntry[], b: CaptionEntry[]): CaptionEntry[] {
+  const map = new Map<string, CaptionEntry>();
+  for (const item of [...a, ...b]) {
+    map.set(item.id, item);
+  }
+  return [...map.values()]
+    .sort((x, y) => x.at - y.at)
+    .slice(-MAX_CAPTIONS);
+}
+
+/** Prefer the fuller transcript history when reconciling instances. */
+function mergeRooms(local: Room, remote: Room): Room {
+  const captions = mergeCaptions(local.captions, remote.captions);
+  const newer = local.updatedAt >= remote.updatedAt ? local : remote;
+  return {
+    code: local.code || remote.code,
+    createdAt: Math.min(local.createdAt || remote.createdAt, remote.createdAt || local.createdAt),
+    updatedAt: Math.max(local.updatedAt, remote.updatedAt),
+    teacherConnected: newer.teacherConnected,
+    liveText: newer.liveText,
+    captions,
+  };
 }
 
 async function kvGet(code: string): Promise<Room | undefined> {
@@ -99,16 +139,45 @@ function notify(room: Room) {
   for (const listener of set) listener(room);
 }
 
+async function persistRoom(room: Room): Promise<Room> {
+  const code = room.code;
+  const queues = saveQueues();
+  const previous = queues.get(code) ?? Promise.resolve();
+
+  let result = room;
+  const job = previous
+    .catch(() => undefined)
+    .then(async () => {
+      const remote = await kvGet(code);
+      const merged = remote ? mergeRooms(room, remote) : room;
+      merged.updatedAt = Date.now();
+      merged.captions = mergeCaptions(merged.captions, []);
+      memoryStore().set(code, merged);
+      await kvSet(merged);
+      result = merged;
+      notify(merged);
+    });
+
+  queues.set(
+    code,
+    job.finally(() => {
+      if (queues.get(code) === job) queues.delete(code);
+    }),
+  );
+
+  await job;
+  return result;
+}
+
 async function saveRoom(room: Room): Promise<Room> {
   room.updatedAt = Date.now();
   memoryStore().set(room.code, room);
-  try {
-    await kvSet(room);
-  } catch {
-    /* local/memory still works for single-instance */
-  }
   notify(room);
-  return room;
+  try {
+    return await persistRoom(room);
+  } catch {
+    return room;
+  }
 }
 
 export async function createRoom(): Promise<Room> {
@@ -136,11 +205,18 @@ export async function getRoom(code: string): Promise<Room | undefined> {
 
   const cached = memoryStore().get(normalized);
   const remote = await kvGet(normalized);
+
+  if (cached && remote) {
+    const merged = mergeRooms(cached, remote);
+    memoryStore().set(normalized, merged);
+    return cloneRoom(merged);
+  }
   if (remote) {
     memoryStore().set(normalized, remote);
-    return remote;
+    return cloneRoom(remote);
   }
-  return cached;
+  if (cached) return cloneRoom(cached);
+  return undefined;
 }
 
 export async function ensureRoom(code: string): Promise<Room> {
@@ -175,10 +251,10 @@ export async function updateLiveCaption(
   const room = await ensureRoom(code);
   room.liveText = text;
   room.updatedAt = Date.now();
-  memoryStore().set(room.code, room);
+  memoryStore().set(room.code, cloneRoom(room));
   notify(room);
 
-  // Throttle remote writes — interim speech updates are very frequent.
+  // Throttle remote writes — never drop final captions when syncing live text.
   const key = room.code;
   const timers = liveTimers();
   if (!timers.has(key)) {
@@ -187,7 +263,7 @@ export async function updateLiveCaption(
       setTimeout(() => {
         timers.delete(key);
         const latest = memoryStore().get(key);
-        if (latest) void kvSet(latest).catch(() => undefined);
+        if (latest) void persistRoom(cloneRoom(latest)).catch(() => undefined);
       }, 900),
     );
   }
@@ -202,15 +278,20 @@ export async function appendFinalCaption(
   const cleaned = text.trim();
   if (!cleaned) return room;
 
+  // Avoid consecutive duplicates from speech recognition restarts.
+  const last = room.captions[room.captions.length - 1];
+  if (last && last.text.trim().toLowerCase() === cleaned.toLowerCase()) {
+    room.liveText = "";
+    return saveRoom(room);
+  }
+
   room.captions.push({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     text: cleaned,
     final: true,
     at: Date.now(),
   });
-  if (room.captions.length > 80) {
-    room.captions = room.captions.slice(-80);
-  }
+  room.captions = room.captions.slice(-MAX_CAPTIONS);
   room.liveText = "";
   return saveRoom(room);
 }
