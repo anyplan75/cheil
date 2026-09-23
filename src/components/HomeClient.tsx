@@ -60,7 +60,7 @@ export function HomeClient() {
     <main className="home">
       <div className="home-atmosphere" aria-hidden />
       <section className="hero">
-        <p className="brand-mark animate-rise">제일교회</p>
+        <p className="brand-mark animate-rise">서귀포 제일교회</p>
         <h1 className="brand-title animate-rise delay-1">AWANA English</h1>
         <p className="hero-lead animate-rise delay-2">
           교사가 영어로 말하면 실시간 자막이 생기고, 학생은 모르는 단어를 눌러

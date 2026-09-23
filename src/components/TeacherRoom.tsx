@@ -83,7 +83,7 @@ export function TeacherRoom({ code }: { code: string }) {
     <div className="room-shell">
       <header className="room-header">
         <div>
-          <p className="eyebrow">제일교회 AWANA · Teacher</p>
+          <p className="eyebrow">서귀포 제일교회 AWANA · Teacher</p>
           <h1>Room {code}</h1>
         </div>
         <div className="status-pill" data-on={listening}>

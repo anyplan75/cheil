@@ -15,7 +15,7 @@ export function StudentRoom({ code }: { code: string }) {
     <div className="room-shell student-shell">
       <header className="room-header">
         <div>
-          <p className="eyebrow">제일교회 AWANA · Student</p>
+          <p className="eyebrow">서귀포 제일교회 AWANA · Student</p>
           <h1>Room {code}</h1>
         </div>
         <div className="status-pill" data-on={room?.teacherConnected}>
