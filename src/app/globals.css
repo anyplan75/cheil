@@ -538,9 +538,51 @@ textarea {
   font-size: 1.8rem;
 }
 
+.dict-panel__word-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.dict-panel__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.9rem;
+  margin-top: 0.35rem;
+  align-items: baseline;
+}
+
 .dict-panel__phonetic {
-  margin: 0.15rem 0 0;
+  margin: 0;
   color: var(--ink-soft);
+}
+
+.dict-panel__gloss {
+  margin: 0;
+  color: var(--bg-deep);
+  font-weight: 650;
+  font-size: 1.05rem;
+}
+
+.speak-btn {
+  border: 1px solid var(--line);
+  background: rgba(8, 59, 63, 0.08);
+  color: var(--bg-deep);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-weight: 650;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.speak-btn:hover {
+  background: rgba(217, 107, 43, 0.16);
+}
+
+.speak-btn--on {
+  background: rgba(217, 107, 43, 0.22);
+  transform: scale(1.03);
 }
 
 .dict-meaning {
@@ -550,7 +592,27 @@ textarea {
 .dict-meaning h3 {
   margin: 0 0 0.4rem;
   color: var(--bg-mid);
-  text-transform: capitalize;
+}
+
+.dict-pos-en {
+  margin-left: 0.45rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.dict-ko {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.dict-en {
+  margin: 0.2rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
 }
 
 .dict-meaning ol {

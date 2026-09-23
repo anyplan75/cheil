@@ -31,7 +31,7 @@ export function StudentRoom({ code }: { code: string }) {
       <section className="caption-board">
         <div className="section-copy">
           <h2>Teacher said</h2>
-          <p>모르는 영어 단어를 누르면 사전 뜻이 나타납니다.</p>
+          <p>모르는 영어 단어를 누르면 영한 뜻과 발음을 확인할 수 있습니다.</p>
         </div>
         <div className="caption-scroll">
           {(room?.captions ?? []).map((line) => (
