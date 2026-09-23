@@ -1,6 +1,22 @@
 # 제일교회 AWANA English
 
-교사용 / 학생용 링크로 영어 대화를 돕는 웹 앱입니다.
+교사가 영어로 말하면 실시간 자막이 생기고, 학생은 단어를 눌러 사전을 보고, 하고 싶은 말을 적으면 영어 표현을 받는 웹 앱입니다.
+
+## 웹에서 바로 쓰기 (배포)
+
+GitHub 저장소를 Vercel에 연결하면 `https://....vercel.app` 주소로 바로 사용할 수 있습니다.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/anyplan75/cheil/tree/cursor/awana-english-app-5cb8)
+
+또는:
+
+1. https://vercel.com/new 접속
+2. GitHub로 로그인
+3. `anyplan75/cheil` 저장소 Import
+4. Branch를 `cursor/awana-english-app-5cb8` (또는 `main`에 머지 후) 선택
+5. **Deploy** 클릭
+
+배포가 끝나면 나오는 주소가 교사용/학생용 링크의 기준 주소입니다.
 
 ## 기능
 
@@ -9,16 +25,15 @@
 - **단어 사전**: 자막의 모르는 단어를 누르면 영어 사전 뜻 표시
 - **말하기 도우미**: 하고 싶은 말을 한국어로 적으면 영어 표현 제안
 
-## 실행
+## 로컬 실행 (개발용)
 
 ```bash
 npm install
 npm run dev
 ```
 
-브라우저에서 `http://localhost:3000` 을 엽니다.
-
-교사용 음성 인식은 **Chrome / Edge** 에서 가장 잘 동작합니다. (Web Speech API)
+브라우저에서 `http://localhost:3000` 을 엽니다.  
+교사용 음성 인식은 **Chrome / Edge** 에서 가장 잘 동작합니다.
 
 ## 사용 방법
 
@@ -26,7 +41,3 @@ npm run dev
 2. **교사용 링크**를 교사 기기에, **학생용 링크**를 학생 기기에 공유
 3. 교사 화면에서 **Start microphone** 후 영어로 말하기
 4. 학생은 자막 단어를 눌러 사전을 보고, 아래 칸에 하고 싶은 말을 적어 영어 표현을 확인
-
-## 배포 참고
-
-실시간 자막 상태는 서버 메모리에 보관됩니다. 단일 인스턴스(`next start` 또는 로컬 노트북)에서 사용하기에 적합합니다. 여러 서버 인스턴스로 스케일아웃할 때는 Redis 등 공유 스토리지가 필요합니다.

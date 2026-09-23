@@ -8,6 +8,6 @@ export default async function TeacherPage({ params }: Props) {
   const { code } = await params;
   const normalized = code.toUpperCase();
   if (!/^[A-Z0-9]{4,8}$/.test(normalized)) notFound();
-  ensureRoom(normalized);
+  await ensureRoom(normalized);
   return <TeacherRoom code={normalized} />;
 }

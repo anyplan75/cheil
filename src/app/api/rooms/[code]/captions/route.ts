@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import {
   appendFinalCaption,
   clearCaptions,
-  ensureRoom,
   getRoom,
   publicRoomView,
   touchTeacher,
@@ -10,12 +9,12 @@ import {
 } from "@/lib/rooms";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ code: string }> };
 
 export async function POST(request: Request, { params }: Params) {
   const { code } = await params;
-  ensureRoom(code);
 
   const body = (await request.json()) as {
     type?: "live" | "final" | "clear" | "teacher";
@@ -25,21 +24,24 @@ export async function POST(request: Request, { params }: Params) {
 
   switch (body.type) {
     case "live":
-      updateLiveCaption(code, body.text ?? "");
+      await updateLiveCaption(code, body.text ?? "");
       break;
     case "final":
-      appendFinalCaption(code, body.text ?? "");
+      await appendFinalCaption(code, body.text ?? "");
       break;
     case "clear":
-      clearCaptions(code);
+      await clearCaptions(code);
       break;
     case "teacher":
-      touchTeacher(code, Boolean(body.connected));
+      await touchTeacher(code, Boolean(body.connected));
       break;
     default:
       return NextResponse.json({ error: "Invalid type" }, { status: 400 });
   }
 
-  const updated = getRoom(code)!;
+  const updated = await getRoom(code);
+  if (!updated) {
+    return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  }
   return NextResponse.json(publicRoomView(updated));
 }

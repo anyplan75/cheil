@@ -2,12 +2,13 @@ import { ensureRoom, publicRoomView, subscribe } from "@/lib/rooms";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 type Params = { params: Promise<{ code: string }> };
 
 export async function GET(request: Request, { params }: Params) {
   const { code } = await params;
-  const room = ensureRoom(code);
+  const room = await ensureRoom(code);
 
   const encoder = new TextEncoder();
   let cleanup = () => {};
@@ -28,6 +29,17 @@ export async function GET(request: Request, { params }: Params) {
         }
       });
 
+      // On serverless, also poll remote store so cross-instance updates arrive.
+      const poll = setInterval(() => {
+        void ensureRoom(code).then((latest) => {
+          try {
+            send(publicRoomView(latest));
+          } catch {
+            clearInterval(poll);
+          }
+        });
+      }, 1200);
+
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(`: ping\n\n`));
@@ -38,6 +50,7 @@ export async function GET(request: Request, { params }: Params) {
 
       cleanup = () => {
         clearInterval(heartbeat);
+        clearInterval(poll);
         unsubscribe();
       };
 
