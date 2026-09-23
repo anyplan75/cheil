@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { playDictionaryAudio } from "@/lib/speak";
 
 type Meaning = {
   partOfSpeech: string;
@@ -21,26 +22,6 @@ type DictionaryResult = {
   glossKo: string;
   meanings: Meaning[];
 };
-
-function playPronunciation(word: string, audioUrl?: string) {
-  if (audioUrl) {
-    const audio = new Audio(audioUrl);
-    void audio.play().catch(() => {
-      speakFallback(word);
-    });
-    return;
-  }
-  speakFallback(word);
-}
-
-function speakFallback(word: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(word);
-  utter.lang = "en-US";
-  utter.rate = 0.9;
-  window.speechSynthesis.speak(utter);
-}
 
 function DictionaryContent({
   word,
@@ -81,7 +62,7 @@ function DictionaryContent({
 
   function onPlay() {
     setPlaying(true);
-    playPronunciation(word, data?.audioUrl);
+    playDictionaryAudio(word, data?.audioUrl);
     window.setTimeout(() => setPlaying(false), 1400);
   }
 

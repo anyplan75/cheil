@@ -1,19 +1,11 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { speakEnglish } from "@/lib/speak";
 
 type Suggestion = {
   english: string;
 };
-
-function speakEnglish(text: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = "en-US";
-  utter.rate = 0.9;
-  window.speechSynthesis.speak(utter);
-}
 
 export function SpeakHelper() {
   const [text, setText] = useState("");
@@ -51,8 +43,8 @@ export function SpeakHelper() {
 
   function onPlay(english: string) {
     setPlaying(english);
-    speakEnglish(english);
-    window.setTimeout(() => setPlaying(null), 1600);
+    void speakEnglish(english);
+    window.setTimeout(() => setPlaying(null), 1800);
   }
 
   return (
