@@ -4,14 +4,23 @@ import { FormEvent, useState } from "react";
 
 type Suggestion = {
   english: string;
-  note: string;
 };
+
+function speakEnglish(text: string) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "en-US";
+  utter.rate = 0.9;
+  window.speechSynthesis.speak(utter);
+}
 
 export function SpeakHelper() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [playing, setPlaying] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -40,11 +49,17 @@ export function SpeakHelper() {
     }
   }
 
+  function onPlay(english: string) {
+    setPlaying(english);
+    speakEnglish(english);
+    window.setTimeout(() => setPlaying(null), 1600);
+  }
+
   return (
     <section className="helper-card">
       <div className="section-copy">
         <h2>말하고 싶은 내용</h2>
-        <p>한국어로 적으면, 영어로 어떤 단어를 쓰면 좋은지 알려줍니다.</p>
+        <p>한국어로 적으면, 영어로 어떤 말을 하면 좋은지 알려줍니다.</p>
       </div>
 
       <form className="helper-form" onSubmit={onSubmit}>
@@ -68,9 +83,19 @@ export function SpeakHelper() {
       {suggestions.length > 0 ? (
         <ul className="suggest-list">
           {suggestions.map((item) => (
-            <li key={`${item.english}-${item.note}`}>
-              <p className="suggest-en">{item.english}</p>
-              <p className="suggest-note">{item.note}</p>
+            <li key={item.english}>
+              <div className="suggest-row">
+                <p className="suggest-en">{item.english}</p>
+                <button
+                  type="button"
+                  className={`speak-btn ${playing === item.english ? "speak-btn--on" : ""}`}
+                  onClick={() => onPlay(item.english)}
+                  aria-label="영어 문장 듣기"
+                  title="영어 문장 듣기"
+                >
+                  🔊 듣기
+                </button>
+              </div>
             </li>
           ))}
         </ul>

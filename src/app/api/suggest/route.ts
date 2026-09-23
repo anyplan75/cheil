@@ -4,7 +4,6 @@ export const runtime = "nodejs";
 
 type Suggestion = {
   english: string;
-  note: string;
 };
 
 function splitIdeas(input: string): string[] {
@@ -38,30 +37,16 @@ export async function POST(request: Request) {
   try {
     const full = await translateKoToEn(text);
     if (full) {
-      suggestions.push({
-        english: full,
-        note: "자연스러운 영어 문장 / Natural English",
-      });
+      suggestions.push({ english: full });
     }
 
     for (const idea of ideas) {
       if (idea === text && ideas.length === 1) continue;
       const piece = await translateKoToEn(idea);
       if (!piece) continue;
-      const words = piece
-        .replace(/[.?!,]/g, "")
-        .split(/\s+/)
-        .filter(Boolean);
-      suggestions.push({
-        english: piece,
-        note:
-          words.length <= 3
-            ? `핵심 단어: ${words.join(" · ")}`
-            : `표현 제안: ${idea}`,
-      });
+      suggestions.push({ english: piece });
     }
 
-    // Deduplicate by english (case-insensitive)
     const seen = new Set<string>();
     const unique = suggestions.filter((s) => {
       const key = s.english.toLowerCase();
