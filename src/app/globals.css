@@ -154,6 +154,41 @@ textarea {
 
 .hero-actions {
   margin-top: 1.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: flex-end;
+}
+
+.hero-church-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: min(100%, 18rem);
+}
+
+.hero-church-field span {
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  color: rgba(255, 248, 238, 0.78);
+}
+
+.hero-church-field input {
+  width: 100%;
+  border: 1px solid rgba(255, 248, 238, 0.22);
+  border-radius: 0.9rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 250, 243, 0.12);
+  color: #fffaf2;
+  outline: none;
+}
+
+.hero-church-field input::placeholder {
+  color: rgba(255, 248, 238, 0.45);
+}
+
+.hero-church-field input:focus {
+  border-color: rgba(255, 201, 135, 0.7);
+  background: rgba(255, 250, 243, 0.16);
 }
 
 .hero .primary-btn {

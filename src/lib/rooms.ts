@@ -7,6 +7,7 @@ export type CaptionEntry = {
 
 export type Room = {
   code: string;
+  churchName: string;
   createdAt: number;
   updatedAt: number;
   teacherConnected: boolean;
@@ -17,8 +18,17 @@ export type Room = {
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const MAX_CAPTIONS = 500;
 const KV_NS =
-  process.env.AWANA_KV_NAMESPACE || "p-cheil-awana-7f5b0c3e";
+  process.env.AWANA_KV_NAMESPACE || "p-awana-english-club";
 const KV_BASE = `https://technocore.chat/kv/${KV_NS}`;
+
+export function normalizeChurchName(name?: string) {
+  return (name ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+}
+
+export function roomBrandLabel(churchName?: string) {
+  const cleaned = normalizeChurchName(churchName);
+  return cleaned ? `${cleaned} AWANA` : "AWANA";
+}
 
 declare global {
   var __awanaRooms: Map<string, Room> | undefined;
@@ -73,7 +83,17 @@ function parseKvBody(raw: string): Room | null {
   const start = raw.indexOf("{");
   if (start < 0) return null;
   try {
-    return JSON.parse(raw.slice(start)) as Room;
+    const parsed = JSON.parse(raw.slice(start)) as Partial<Room>;
+    if (!parsed.code) return null;
+    return {
+      code: parsed.code,
+      churchName: normalizeChurchName(parsed.churchName),
+      createdAt: parsed.createdAt ?? Date.now(),
+      updatedAt: parsed.updatedAt ?? Date.now(),
+      teacherConnected: Boolean(parsed.teacherConnected),
+      captions: Array.isArray(parsed.captions) ? parsed.captions : [],
+      liveText: parsed.liveText ?? "",
+    };
   } catch {
     return null;
   }
@@ -102,6 +122,7 @@ function mergeRooms(local: Room, remote: Room): Room {
   const newer = local.updatedAt >= remote.updatedAt ? local : remote;
   return {
     code: local.code || remote.code,
+    churchName: newer.churchName || local.churchName || remote.churchName || "",
     createdAt: Math.min(local.createdAt || remote.createdAt, remote.createdAt || local.createdAt),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
     teacherConnected: newer.teacherConnected,
@@ -180,7 +201,7 @@ async function saveRoom(room: Room): Promise<Room> {
   }
 }
 
-export async function createRoom(): Promise<Room> {
+export async function createRoom(opts?: { churchName?: string }): Promise<Room> {
   let code = createRoomCode();
   for (let i = 0; i < 5; i += 1) {
     const existing = await getRoom(code);
@@ -190,6 +211,7 @@ export async function createRoom(): Promise<Room> {
 
   const room: Room = {
     code,
+    churchName: normalizeChurchName(opts?.churchName),
     createdAt: Date.now(),
     updatedAt: Date.now(),
     teacherConnected: false,
@@ -226,6 +248,7 @@ export async function ensureRoom(code: string): Promise<Room> {
 
   const room: Room = {
     code: normalized,
+    churchName: "",
     createdAt: Date.now(),
     updatedAt: Date.now(),
     teacherConnected: false,
@@ -321,6 +344,7 @@ export function subscribe(
 export function publicRoomView(room: Room) {
   return {
     code: room.code,
+    churchName: room.churchName || "",
     teacherConnected: room.teacherConnected,
     liveText: room.liveText,
     captions: room.captions,

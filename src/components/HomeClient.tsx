@@ -8,9 +8,11 @@ export function HomeClient() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [churchName, setChurchName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [created, setCreated] = useState<{
     code: string;
+    churchName: string;
     teacherUrl: string;
     studentUrl: string;
   } | null>(null);
@@ -20,12 +22,21 @@ export function HomeClient() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/rooms", { method: "POST" });
-      const data = (await res.json()) as { code?: string; error?: string };
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ churchName }),
+      });
+      const data = (await res.json()) as {
+        code?: string;
+        churchName?: string;
+        error?: string;
+      };
       if (!res.ok || !data.code) throw new Error(data.error || "failed");
       const origin = window.location.origin;
       setCreated({
         code: data.code,
+        churchName: data.churchName ?? churchName.trim(),
         teacherUrl: `${origin}/room/${data.code}/teacher`,
         studentUrl: `${origin}/room/${data.code}/student`,
       });
@@ -60,13 +71,24 @@ export function HomeClient() {
     <main className="home">
       <div className="home-atmosphere" aria-hidden />
       <section className="hero">
-        <p className="brand-mark animate-rise">서귀포 제일교회</p>
-        <h1 className="brand-title animate-rise delay-1">AWANA English</h1>
+        <p className="brand-mark animate-rise">AWANA</p>
+        <h1 className="brand-title animate-rise delay-1">English Club</h1>
         <p className="hero-lead animate-rise delay-2">
-          교사가 영어로 말하면 실시간 자막이 생기고, 학생은 모르는 단어를 눌러
-          뜻을 보고, 하고 싶은 말을 적으면 영어 표현을 받습니다.
+          어느 교회 어와나에서도 쓸 수 있습니다. 교사가 영어로 말하면 실시간
+          자막이 생기고, 학생은 모르는 단어를 눌러 뜻을 보고, 하고 싶은 말을
+          적으면 영어 표현을 받습니다.
         </p>
         <div className="hero-actions animate-rise delay-3">
+          <label className="hero-church-field" htmlFor="church-name">
+            <span>교회 / 클럽 이름 (선택)</span>
+            <input
+              id="church-name"
+              value={churchName}
+              onChange={(e) => setChurchName(e.target.value)}
+              placeholder="예: 서귀포제일교회"
+              maxLength={40}
+            />
+          </label>
           <button
             type="button"
             className="primary-btn"
@@ -82,7 +104,11 @@ export function HomeClient() {
 
       {created ? (
         <section className="created-panel animate-rise">
-          <p className="eyebrow">Room {created.code}</p>
+          <p className="eyebrow">
+            {created.churchName
+              ? `${created.churchName} · Room ${created.code}`
+              : `Room ${created.code}`}
+          </p>
           <div className="link-stack">
             <article>
               <h2>교사용 링크</h2>

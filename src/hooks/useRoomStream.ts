@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 export type RoomView = {
   code: string;
+  churchName: string;
   teacherConnected: boolean;
   liveText: string;
   captions: { id: string; text: string; final: boolean; at: number }[];

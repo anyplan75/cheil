@@ -15,9 +15,9 @@ const body = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "서귀포 제일교회 AWANA English",
+  title: "AWANA English Club",
   description:
-    "Teacher and student links for live English captions, dictionary lookup, and speaking help.",
+    "Any church Awana club can use live English captions, dictionary lookup, and speaking help.",
 };
 
 export const viewport: Viewport = {
