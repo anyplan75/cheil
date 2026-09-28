@@ -1,0 +1,353 @@
+export type CaptionEntry = {
+  id: string;
+  text: string;
+  final: boolean;
+  at: number;
+};
+
+export type Room = {
+  code: string;
+  churchName: string;
+  createdAt: number;
+  updatedAt: number;
+  teacherConnected: boolean;
+  captions: CaptionEntry[];
+  liveText: string;
+};
+
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const MAX_CAPTIONS = 500;
+const KV_NS =
+  process.env.AWANA_KV_NAMESPACE || "p-awana-english-club";
+const KV_BASE = `https://technocore.chat/kv/${KV_NS}`;
+
+export function normalizeChurchName(name?: string) {
+  return (name ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+}
+
+export function roomBrandLabel(churchName?: string) {
+  const cleaned = normalizeChurchName(churchName);
+  return cleaned ? `${cleaned} AWANA` : "AWANA";
+}
+
+declare global {
+  var __awanaRooms: Map<string, Room> | undefined;
+  var __awanaListeners: Map<string, Set<(room: Room) => void>> | undefined;
+  var __awanaLiveTimers: Map<string, ReturnType<typeof setTimeout>> | undefined;
+  var __awanaSaveQueues: Map<string, Promise<void>> | undefined;
+}
+
+function memoryStore() {
+  if (!globalThis.__awanaRooms) globalThis.__awanaRooms = new Map();
+  return globalThis.__awanaRooms;
+}
+
+function listeners() {
+  if (!globalThis.__awanaListeners) {
+    globalThis.__awanaListeners = new Map();
+  }
+  return globalThis.__awanaListeners;
+}
+
+function liveTimers() {
+  if (!globalThis.__awanaLiveTimers) {
+    globalThis.__awanaLiveTimers = new Map();
+  }
+  return globalThis.__awanaLiveTimers;
+}
+
+function saveQueues() {
+  if (!globalThis.__awanaSaveQueues) {
+    globalThis.__awanaSaveQueues = new Map();
+  }
+  return globalThis.__awanaSaveQueues;
+}
+
+export function createRoomCode(): string {
+  let code = "";
+  for (let i = 0; i < 6; i += 1) {
+    code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+  }
+  return code;
+}
+
+function normalizeCode(code: string) {
+  return code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+}
+
+function kvKey(code: string) {
+  return normalizeCode(code).toLowerCase();
+}
+
+function parseKvBody(raw: string): Room | null {
+  const start = raw.indexOf("{");
+  if (start < 0) return null;
+  try {
+    const parsed = JSON.parse(raw.slice(start)) as Partial<Room>;
+    if (!parsed.code) return null;
+    return {
+      code: parsed.code,
+      churchName: normalizeChurchName(parsed.churchName),
+      createdAt: parsed.createdAt ?? Date.now(),
+      updatedAt: parsed.updatedAt ?? Date.now(),
+      teacherConnected: Boolean(parsed.teacherConnected),
+      captions: Array.isArray(parsed.captions) ? parsed.captions : [],
+      liveText: parsed.liveText ?? "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function cloneRoom(room: Room): Room {
+  return {
+    ...room,
+    captions: [...room.captions],
+  };
+}
+
+function mergeCaptions(a: CaptionEntry[], b: CaptionEntry[]): CaptionEntry[] {
+  const map = new Map<string, CaptionEntry>();
+  for (const item of [...a, ...b]) {
+    map.set(item.id, item);
+  }
+  return [...map.values()]
+    .sort((x, y) => x.at - y.at)
+    .slice(-MAX_CAPTIONS);
+}
+
+/** Prefer the fuller transcript history when reconciling instances. */
+function mergeRooms(local: Room, remote: Room): Room {
+  const captions = mergeCaptions(local.captions, remote.captions);
+  const newer = local.updatedAt >= remote.updatedAt ? local : remote;
+  return {
+    code: local.code || remote.code,
+    churchName: newer.churchName || local.churchName || remote.churchName || "",
+    createdAt: Math.min(local.createdAt || remote.createdAt, remote.createdAt || local.createdAt),
+    updatedAt: Math.max(local.updatedAt, remote.updatedAt),
+    teacherConnected: newer.teacherConnected,
+    liveText: newer.liveText,
+    captions,
+  };
+}
+
+async function kvGet(code: string): Promise<Room | undefined> {
+  try {
+    const res = await fetch(`${KV_BASE}/${kvKey(code)}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return undefined;
+    const room = parseKvBody(await res.text());
+    return room ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function kvSet(room: Room): Promise<void> {
+  await fetch(`${KV_BASE}/${kvKey(room.code)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ value: JSON.stringify(room) }),
+    signal: AbortSignal.timeout(6000),
+  });
+}
+
+function notify(room: Room) {
+  const set = listeners().get(room.code);
+  if (!set) return;
+  for (const listener of set) listener(room);
+}
+
+async function persistRoom(room: Room): Promise<Room> {
+  const code = room.code;
+  const queues = saveQueues();
+  const previous = queues.get(code) ?? Promise.resolve();
+
+  let result = room;
+  const job = previous
+    .catch(() => undefined)
+    .then(async () => {
+      const remote = await kvGet(code);
+      const merged = remote ? mergeRooms(room, remote) : room;
+      merged.updatedAt = Date.now();
+      merged.captions = mergeCaptions(merged.captions, []);
+      memoryStore().set(code, merged);
+      await kvSet(merged);
+      result = merged;
+      notify(merged);
+    });
+
+  queues.set(
+    code,
+    job.finally(() => {
+      if (queues.get(code) === job) queues.delete(code);
+    }),
+  );
+
+  await job;
+  return result;
+}
+
+async function saveRoom(room: Room): Promise<Room> {
+  room.updatedAt = Date.now();
+  memoryStore().set(room.code, room);
+  notify(room);
+  try {
+    return await persistRoom(room);
+  } catch {
+    return room;
+  }
+}
+
+export async function createRoom(opts?: { churchName?: string }): Promise<Room> {
+  let code = createRoomCode();
+  for (let i = 0; i < 5; i += 1) {
+    const existing = await getRoom(code);
+    if (!existing) break;
+    code = createRoomCode();
+  }
+
+  const room: Room = {
+    code,
+    churchName: normalizeChurchName(opts?.churchName),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    teacherConnected: false,
+    captions: [],
+    liveText: "",
+  };
+  return saveRoom(room);
+}
+
+export async function getRoom(code: string): Promise<Room | undefined> {
+  const normalized = normalizeCode(code);
+  if (!normalized) return undefined;
+
+  const cached = memoryStore().get(normalized);
+  const remote = await kvGet(normalized);
+
+  if (cached && remote) {
+    const merged = mergeRooms(cached, remote);
+    memoryStore().set(normalized, merged);
+    return cloneRoom(merged);
+  }
+  if (remote) {
+    memoryStore().set(normalized, remote);
+    return cloneRoom(remote);
+  }
+  if (cached) return cloneRoom(cached);
+  return undefined;
+}
+
+export async function ensureRoom(code: string): Promise<Room> {
+  const normalized = normalizeCode(code);
+  const existing = await getRoom(normalized);
+  if (existing) return existing;
+
+  const room: Room = {
+    code: normalized,
+    churchName: "",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    teacherConnected: false,
+    captions: [],
+    liveText: "",
+  };
+  return saveRoom(room);
+}
+
+export async function touchTeacher(
+  code: string,
+  connected: boolean,
+): Promise<Room | undefined> {
+  const room = await ensureRoom(code);
+  room.teacherConnected = connected;
+  return saveRoom(room);
+}
+
+export async function updateLiveCaption(
+  code: string,
+  text: string,
+): Promise<Room | undefined> {
+  const room = await ensureRoom(code);
+  room.liveText = text;
+  room.updatedAt = Date.now();
+  memoryStore().set(room.code, cloneRoom(room));
+  notify(room);
+
+  // Throttle remote writes — never drop final captions when syncing live text.
+  const key = room.code;
+  const timers = liveTimers();
+  if (!timers.has(key)) {
+    timers.set(
+      key,
+      setTimeout(() => {
+        timers.delete(key);
+        const latest = memoryStore().get(key);
+        if (latest) void persistRoom(cloneRoom(latest)).catch(() => undefined);
+      }, 900),
+    );
+  }
+  return room;
+}
+
+export async function appendFinalCaption(
+  code: string,
+  text: string,
+): Promise<Room | undefined> {
+  const room = await ensureRoom(code);
+  const cleaned = text.trim();
+  if (!cleaned) return room;
+
+  // Avoid consecutive duplicates from speech recognition restarts.
+  const last = room.captions[room.captions.length - 1];
+  if (last && last.text.trim().toLowerCase() === cleaned.toLowerCase()) {
+    room.liveText = "";
+    return saveRoom(room);
+  }
+
+  room.captions.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    text: cleaned,
+    final: true,
+    at: Date.now(),
+  });
+  room.captions = room.captions.slice(-MAX_CAPTIONS);
+  room.liveText = "";
+  return saveRoom(room);
+}
+
+export async function clearCaptions(code: string): Promise<Room | undefined> {
+  const room = await ensureRoom(code);
+  room.captions = [];
+  room.liveText = "";
+  return saveRoom(room);
+}
+
+export function subscribe(
+  code: string,
+  listener: (room: Room) => void,
+): () => void {
+  const key = normalizeCode(code);
+  const map = listeners();
+  const set = map.get(key) ?? new Set();
+  set.add(listener);
+  map.set(key, set);
+  return () => {
+    set.delete(listener);
+    if (set.size === 0) map.delete(key);
+  };
+}
+
+export function publicRoomView(room: Room) {
+  return {
+    code: room.code,
+    churchName: room.churchName || "",
+    teacherConnected: room.teacherConnected,
+    liveText: room.liveText,
+    captions: room.captions,
+    updatedAt: room.updatedAt,
+  };
+}
