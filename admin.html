@@ -109,7 +109,15 @@
 
     async function loadSettings() {
       await JIFC.db.init();
-      const data = await JIFC.db.get("settings");
+      let data = null;
+      try {
+        data = await JIFC.db.get("settings");
+      } catch (err) {
+        console.warn("[CHEIL] settings 읽기 실패 — Firebase /cheil 규칙을 확인하세요.", err);
+        const msg = document.getElementById("msg");
+        if (msg) msg.textContent = "Firebase /cheil 권한 없음 — Rules에서 cheil 허용 필요";
+        return;
+      }
       if (!data) return;
       if (data.global) {
         document.getElementById("global_layout").value = data.global.layout || "bottom";

@@ -42,6 +42,26 @@ JIFC와 동일 기능이며, Firebase 경로(`/cheil`)와 localStorage 키(`chei
 
 기본값은 기존 `overlay-lab` DB의 `/cheil` 경로입니다.
 
+**필수 — Realtime Database Rules**에 `/cheil` 허용이 있어야 합니다.  
+`permission_denied at /cheil/settings` 가 뜨면 Rules에 `cheil`이 없는 것입니다. `jifc`와 같이 추가하세요.
+
+```json
+{
+  "rules": {
+    "jifc": {
+      ".read": true,
+      ".write": true
+    },
+    "cheil": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
+```
+
+예배용 공개 읽기/쓰기입니다. 운영을 더 잠그려면 인증·비밀 토큰 규칙을 쓰세요.
+
 ### 2. 송출 (방송실)
 
 1. **Chrome**으로 `broadcast.html` 열기
