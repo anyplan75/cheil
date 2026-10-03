@@ -126,33 +126,50 @@ JIFC.broadcast = (() => {
     return Promise.resolve(state.enabledTargets);
   }
 
+  function isPermissionDenied(err) {
+    const code = (err && (err.code || err.message)) || "";
+    return /permission_denied|PERMISSION_DENIED/i.test(String(code));
+  }
+
   /** 선택 언어를 Firebase settings에 반영 → listen/오버레이 목록 동기화 */
   async function syncSettingsForTargets(targets) {
-    const existing = (await JIFC.db.get("settings")) || {};
     const selectedTargets = (targets || []).filter((c) => c !== "ko" && JIFC.langByCode[c]);
     const activeTargets = ["ko", ...selectedTargets];
-    const next = {
-      _timestamp: Date.now(),
-      activeTargets,
-      global: existing.global || {
-        layout: "bottom",
-        align: "center",
-        color: "#ffffff",
-        bgColor: "#000000",
-        bgOpacity: 0.7,
-      },
-    };
-    JIFC.config.languages.forEach((lang) => {
-      const prev = existing[lang.code] || {};
-      const selected = activeTargets.includes(lang.code);
-      next[lang.code] = {
-        show: selected,
-        fontSize: prev.fontSize || lang.defaultSize,
-        letterSpacing: prev.letterSpacing !== undefined ? prev.letterSpacing : lang.defaultSpacing,
+    try {
+      const existing = (await JIFC.db.get("settings")) || {};
+      const next = {
+        _timestamp: Date.now(),
+        activeTargets,
+        global: existing.global || {
+          layout: "bottom",
+          align: "center",
+          color: "#ffffff",
+          bgColor: "#000000",
+          bgOpacity: 0.7,
+        },
       };
-    });
-    await JIFC.db.set("settings", next);
-    return next;
+      JIFC.config.languages.forEach((lang) => {
+        const prev = existing[lang.code] || {};
+        const selected = activeTargets.includes(lang.code);
+        next[lang.code] = {
+          show: selected,
+          fontSize: prev.fontSize || lang.defaultSize,
+          letterSpacing: prev.letterSpacing !== undefined ? prev.letterSpacing : lang.defaultSpacing,
+        };
+      });
+      await JIFC.db.set("settings", next);
+      return next;
+    } catch (err) {
+      // Firebase 규칙에 /jifc 이 없으면 방송 시작이 막히지 않도록 경고만 남김
+      if (isPermissionDenied(err)) {
+        console.warn(
+          "[JIFC] Firebase /jifc/settings 권한 없음. Firebase Console → Realtime Database → Rules 에 /jifc 읽기·쓰기를 허용해야 합니다.",
+          err
+        );
+        return null;
+      }
+      throw err;
+    }
   }
 
   function buildOverlayLinks(targets, origin) {

@@ -317,7 +317,17 @@
         stopBtn.style.display = "inline-block";
         langPickGrid.querySelectorAll("input").forEach((el) => { el.disabled = true; });
       } catch (e) {
-        alert(e.message);
+        const msg = String((e && e.message) || e || "");
+        if (/permission_denied/i.test(msg)) {
+          alert(
+            "Firebase /jifc 경로에 쓰기 권한이 없습니다.\n\n" +
+            "Firebase Console → Realtime Database → Rules 에서\n" +
+            "jifc (및 cheil) 읽기·쓰기를 허용해 주세요.\n\n" +
+            "(Rules 예시: jifc / cheil 모두 .read/.write true)"
+          );
+        } else {
+          alert(msg || "방송 시작에 실패했습니다.");
+        }
       }
     });
 
