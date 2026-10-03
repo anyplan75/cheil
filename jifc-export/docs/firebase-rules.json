@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "jifc": {
+      ".read": true,
+      ".write": true
+    },
+    "cheil": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
